@@ -1,14 +1,31 @@
 project(libcxxabi)
 
+# DARLING: libcxxabi stays at llvmorg-13.0.1 (the libcxx-15 upgrade kept this
+# subproject pinned because LLVM 15's libcxxabi expects libcxx-15's internal
+# headers (`include/atomic_support.h`, std::unexpected_handler typedefs, etc.)
+# in arrangements that diverge from Darling's vendoring layout. Pairing libc++15
+# (consumer-facing) with libc++abi 13 (ABI side) is safe — Apple itself ships
+# matched/mismatched versions and the ABI is stable across these versions.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -std=c++11")
 set(CMAKE_SHARED_LINKER_FLAGS "-nostdlib")
 
 include_directories(BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/../libcxx/include
 	${CMAKE_CURRENT_SOURCE_DIR}/../libcxx
+	# libcxx's internal helpers (atomic_support.h etc.); libcxxabi 13 sources
+	# include them via "include/atomic_support.h" — needs libcxx/src on the path.
+	${CMAKE_CURRENT_SOURCE_DIR}/../libcxx/src
 )
 
-add_definitions(-D__DARWIN_NON_CANCELABLE=1 -D_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION=1)
+add_definitions(-D__DARWIN_NON_CANCELABLE=1 -D_LIBCPP_HAS_NO_LIBRARY_ALIGNED_ALLOCATION=1
+	# DARLING: libcxxabi 13 source needs symbols that libcxx 15 removed/gated:
+	# - _LIBCPP_SAFE_STATIC was a require_constant_initialization attribute;
+	#   gone in libcxx 15. Empty define is safe (semantic is best-effort).
+	# - std::unexpected_handler removed in C++17 unless this opt-in macro set.
+	-D_LIBCPP_SAFE_STATIC=
+	-D_LIBCPP_ENABLE_CXX17_REMOVED_UNEXPECTED_FUNCTIONS=1
+	-D_LIBCPP_BUILDING_LIBRARY=1
+)
 
 set(cxxabi_sources
 	src/abort_message.cpp
