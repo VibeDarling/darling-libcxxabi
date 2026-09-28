@@ -3,9 +3,10 @@ project(libcxxabi)
 # DARLING: libcxxabi stays at llvmorg-13.0.1 (the libcxx-15 upgrade kept this
 # subproject pinned because LLVM 15's libcxxabi expects libcxx-15's internal
 # headers (`include/atomic_support.h`, std::unexpected_handler typedefs, etc.)
-# in arrangements that diverge from Darling's vendoring layout. Pairing libc++15
-# (consumer-facing) with libc++abi 13 (ABI side) is safe — Apple itself ships
-# matched/mismatched versions and the ABI is stable across these versions.
+# in arrangements that diverge from Darling's vendoring layout. This preserves
+# the existing ABI implementation while updating the consumer-facing headers.
+# The mixed pair needs integration testing; version compatibility is not a
+# substitute for testing exception handling and runtime consumers.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -nostdinc -std=c++11")
 set(CMAKE_SHARED_LINKER_FLAGS "-nostdlib")
 
@@ -66,4 +67,3 @@ set_target_properties(cxxabi PROPERTIES OUTPUT_NAME "c++abi")
 make_fat(cxxabi)
 
 install(TARGETS cxxabi DESTINATION libexec/darling/usr/lib)
-
